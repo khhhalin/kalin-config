@@ -1,0 +1,21 @@
+# Ignore everything by default
+*
+
+# But do not ignore directories (so .nix files inside dirs are reachable)
+!*/
+
+# Allow all .nix files anywhere in the tree
+!**/*.nix
+
+# Keep the .gitignore itself
+!.gitignore
+
+# Optional common ignores
+result
+.cache
+.DS_Store
+*.pem
+*.key
+*.gpg
+.env
+node_modules/
