@@ -41,10 +41,8 @@
   # Home Manager
   home-manager.useGlobalPkgs = true;
   home-manager.useUserPackages = true;
-  # Import DankMaterialShell's Home Manager module so we can manage per-user
-  # defaults and plugins declaratively in home-manager.
+  # Home Manager shared modules
   home-manager.sharedModules = [
-    dank-material-shell.homeModules.dank-material-shell.default
     nix-colors.homeManagerModules.default
   ];
   home-manager.extraSpecialArgs = { inherit nix-colors; };
