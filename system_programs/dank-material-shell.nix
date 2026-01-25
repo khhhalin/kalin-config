@@ -1,7 +1,8 @@
 { ... }:
 
 {
-  programs.dankMaterialShell = {
+  # The upstream module exposes `programs.dank-material-shell` (kebab-case).
+  programs.dank-material-shell = {
     enable = true;
 
     systemd = {
@@ -10,7 +11,6 @@
     };
 
     enableSystemMonitoring = true;
-    enableClipboard = true;
     enableVPN = true;
     enableDynamicTheming = true;
     enableAudioWavelength = true;

@@ -5,6 +5,7 @@
     ./hardware-configuration.nix
     ./system_programs/packages.nix
     ./system_programs/waydroid.nix
+    ./system_programs/system-utils.nix
     ./system_programs/keyd.nix
     ./system_programs/niri.nix
     ./system_programs/ly.nix
@@ -43,11 +44,20 @@
   # Import DankMaterialShell's Home Manager module so we can manage per-user
   # defaults and plugins declaratively in home-manager.
   home-manager.sharedModules = [
-    dank-material-shell.homeModules.dankMaterialShell.default
+    dank-material-shell.homeModules.dank-material-shell.default
     nix-colors.homeManagerModules.default
   ];
   home-manager.extraSpecialArgs = { inherit nix-colors; };
   home-manager.users.kalin = import ./home.nix;
+
+  # System-wide locale & keyboard: Polish
+  i18n.defaultLocale = "pl_PL.UTF-8";
+  environment.variables = {
+    XKB_DEFAULT_LAYOUT = "pl";
+    XKB_DEFAULT_MODEL = "pc105";
+    XKB_DEFAULT_VARIANT = "";
+    XKB_DEFAULT_OPTIONS = "";
+  };
 
   # DO NOT change this lightly; see the NixOS manual entry for `system.stateVersion`.
   system.stateVersion = "24.11";
