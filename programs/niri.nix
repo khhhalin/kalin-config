@@ -5,6 +5,9 @@
   # We prefer the validated `programs.niri.settings` tree rather than
   # performing imperative edits on the generated KDL.
 
+  # Allow home-manager to overwrite an existing generated config.kdl
+  xdg.configFile."niri/config.kdl".force = true;
+
   programs.niri.settings = {
     # Prefer server-side decorations over CSD when possible.
     prefer-no-csd = true;
