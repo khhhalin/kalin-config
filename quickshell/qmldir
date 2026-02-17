@@ -1,0 +1,5 @@
+module QuickshellConfig
+singleton Theme 1.0 Theme.qml
+Bar 1.0 Bar.qml
+DropdownPanel 1.0 DropdownPanel.qml
+NotificationPopup 1.0 NotificationPopup.qml

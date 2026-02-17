@@ -7,6 +7,17 @@
 # Allow all .nix files anywhere in the tree
 !**/*.nix
 
+# Quickshell config (QML)
+!quickshell/
+!quickshell/**
+
+# Documentation
+!README.md
+!SHELL_CONCEPT.md
+
+# Flake lock file should be tracked for reproducible builds
+!flake.lock
+
 # Keep the .gitignore itself
 !.gitignore
 

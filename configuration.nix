@@ -1,62 +1,22 @@
-{ config, pkgs, dank-material-shell, nix-colors, ... }:
+{ pkgs, ... }:
 
+let
+  meta = import ./meta.nix;
+in
 {
   imports = [
     ./hardware-configuration.nix
-    ./system_programs/packages.nix
-    ./system_programs/waydroid.nix
-    ./system_programs/system-utils.nix
-    ./system_programs/keyd.nix
-    ./system_programs/niri.nix
-    ./system_programs/ly.nix
-    ./system_programs/dank-material-shell.nix
-    ./system_programs/steam.nix
-    ./system_programs/zsh.nix
-    ./system_programs/firefox.nix
+    ./system.nix
+    ./display.nix
+    ./shell.nix
+    ./utils.nix
   ];
-
-  nix.settings.experimental-features = [ "nix-command" "flakes" ];
-  nixpkgs.config.allowUnfree = true;
-
-  boot.loader.systemd-boot.enable = true;
-  boot.loader.efi.canTouchEfiVariables = true;
-
-  networking.networkmanager.enable = true;
-  networking.hostName = "KalinBook";
-  time.timeZone = "Europe/Warsaw";
-
-  fonts = {
-    enableDefaultPackages = true;
-    fontconfig.enable = true;
-  };
-
-  services.upower.enable = true;
 
   # User account
-  users.users.kalin = {
+  users.users.${meta.userName} = {
     isNormalUser = true;
-    extraGroups = [ "wheel" "networkmanager" ];
+    description = meta.fullName;
+    extraGroups = [ "wheel" "networkmanager" "input" "uinput" "video" ];
+    shell = pkgs.zsh;
   };
-
-  # Home Manager
-  home-manager.useGlobalPkgs = true;
-  home-manager.useUserPackages = true;
-  # Home Manager shared modules
-  home-manager.sharedModules = [
-    nix-colors.homeManagerModules.default
-  ];
-  home-manager.extraSpecialArgs = { inherit nix-colors; };
-  home-manager.users.kalin = import ./home.nix;
-
-  # System-wide locale & keyboard: Polish
-  i18n.defaultLocale = "pl_PL.UTF-8";
-  environment.variables = {
-    XKB_DEFAULT_LAYOUT = "pl";
-    XKB_DEFAULT_MODEL = "pc105";
-    XKB_DEFAULT_VARIANT = "";
-    XKB_DEFAULT_OPTIONS = "";
-  };
-
-  # DO NOT change this lightly; see the NixOS manual entry for `system.stateVersion`.
-  system.stateVersion = "24.11";
 }
