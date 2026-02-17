@@ -3,11 +3,15 @@
 {
   programs.zsh.enable = true;
 
-  # Handy baseline tools for interactive shells.
   environment.systemPackages = with pkgs; [
+    foot
+    # shell prompt
+    starship
+
+    # core CLI
     git curl wget gnupg openssh
-    unzip zip
-    rsync
+    unzip zip rsync
     jq ripgrep fd
+    btop fastfetch
   ];
 }

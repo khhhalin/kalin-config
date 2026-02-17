@@ -1,7 +1,10 @@
-{ config, pkgs, lib, waydroid_script, ... }:
+{ pkgs, lib, waydroid_script, ... }:
 
+let
+  meta = import ./meta.nix;
+in
 {
-  # Audio (common baseline)
+  # ── Audio ──────────────────────────────────────────────────────────
   security.rtkit.enable = true;
   services.pipewire = {
     enable = true;
@@ -10,116 +13,85 @@
     alsa.support32Bit = true;
   };
 
-  # Removable drives + file manager integration
-  services.udisks2.enable = true;
+  # ── Storage ────────────────────────────────────────────────────────
+  services.udisks2.enable = true;  # automount USB drives
 
-  # Bluetooth
-  hardware.bluetooth.enable = true;
-  services.blueman.enable = true;
+  # ── Bluetooth (toggle in meta.nix) ────────────────────────────────
+  hardware.bluetooth.enable = meta.enableBluetooth;
+  services.blueman.enable  = meta.enableBluetooth;
 
-  # Firmware updates
+  # ── Firmware updates ───────────────────────────────────────────────
   services.fwupd.enable = true;
 
+  # ── File manager ───────────────────────────────────────────────────
   programs.thunar = {
     enable = true;
-    plugins = [
-      pkgs.thunar-archive-plugin
-      pkgs.thunar-volman
-    ];
+    plugins = [ pkgs.thunar-archive-plugin pkgs.thunar-volman ];
   };
   programs.xfconf.enable = true;
-  services.gvfs.enable = true;
+  services.gvfs.enable    = true;
   services.tumbler.enable = true;
 
-  users.groups.input = {};
-  users.groups.uinput = {};
+  # ── Input groups (for kanata uinput access) ────────────────────────
+ # users.groups.input  = {};
+ # users.groups.uinput = {};
 
-  # Input remapping: kanata
-  # Tap Win = Mod+Space (opens fuzzel via niri bind)
-  # Hold Win = normal Super modifier
-  services.kanata = {
-    enable = true;
-    keyboards.default = {
-      devices = []; # empty = all keyboards
-      extraDefCfg = "process-unmapped-keys yes";
-      config = ''
-        (defsrc
-          lmet
-        )
+  # ── Kanata (keyboard remapper) ─────────────────────────────────────
+  # Uses kanata-with-cmd so it can drive niri via IPC.
+  # Config lives in ~/.config/kanata/config.kbd (user dotfile).
+ # systemd.services.kanata = {
+  #  description = "Kanata keyboard remapper";
+   # wantedBy    = [ "multi-user.target" ];
+   # serviceConfig = {
+    #  Type       = "notify";
+     # ExecStart  = "${lib.getExe pkgs.kanata-with-cmd} --cfg /home/${meta.userName}/.config/kanata/config.kbd";
+  #    Restart    = "on-failure";
+   #   RestartSec = 3;
+   #   SupplementaryGroups = [ "input" "uinput" ];
+   # };
+ # };
+#  services.udev.extraRules = ''
+#    KERNEL=="uinput", MODE="0660", GROUP="uinput", OPTIONS+="static_node=uinput"
+#  '';
 
-        (defalias
-          met (tap-hold-press 200 200 (multi lmet spc) lmet)
-        )
+  # ── Apps (toggles in meta.nix) ─────────────────────────────────────
+  programs.steam.enable   = meta.enableSteam;
 
-        (deflayer base
-          @met
-        )
-      '';
-    };
-  };
-
-  # uinput access for kanata
-  services.udev.extraRules = ''
-    KERNEL=="uinput", MODE="0660", GROUP="uinput", OPTIONS+="static_node=uinput"
-  '';
-
-  # The NixOS kanata module uses DynamicUser + strict sandboxing that prevents
-  # uinput access.  Run as root with minimal overrides (kanata needs raw input).
-  systemd.services.kanata-default.serviceConfig = {
-    DynamicUser = lib.mkForce false;
-    PrivateUsers = lib.mkForce false;
-    DevicePolicy = lib.mkForce "auto";
-    CapabilityBoundingSet = lib.mkForce [ "" ];
-    User = lib.mkForce "root";
-    Group = lib.mkForce "root";
-  };
-
-  # Extras
-  programs.firefox.enable = true;
-  programs.steam.enable = true;
-
-  virtualisation.waydroid = {
-    enable = true;
+  virtualisation.waydroid = lib.mkIf meta.enableWaydroid {
+    enable  = true;
     package = pkgs.waydroid-nftables;
   };
 
-  environment.systemPackages = with pkgs; [
-    # build tools
-    python3 gnumake bison gcc binutils file flex
+  # ── System packages ────────────────────────────────────────────────
+  environment.systemPackages = with pkgs;
+    [
+      # build tools
+      python3 gnumake bison gcc binutils file flex
 
-    # desktop utils
-    xwayland-satellite
-    fuzzel
-    file-roller
-    xdg-utils
+      # desktop
+      xwayland-satellite fuzzel file-roller xdg-utils
+      kanata-with-cmd quickshell
 
-    # shell / panel
-    quickshell
+      # screenshots + clipboard
+      grimblast wl-clipboard slurp grim
 
-    # screenshots + clipboard
-    grimblast
-    wl-clipboard
-    slurp
-    grim
+      # brightness / audio / media
+      brightnessctl pamixer playerctl
 
-    # brightness + audio CLI
-    brightnessctl
-    pamixer
-    playerctl
+      # idle + lock
+      swayidle swaylock
 
-    # idle + lock
-    swayidle
-    swaylock
+      # notifications + tray
+      libnotify networkmanagerapplet
 
-    # notifications (fallback if quickshell notif server not running)
-    libnotify
+      vivaldi
+      vscode
+    ]
+    # waydroid helpers (only when enabled)
+    ++ lib.optionals meta.enableWaydroid [
+      waydroid-nftables
+      waydroid_script.packages.${pkgs.system}.waydroid_script
+      lzip
+    ];
 
-    # network applet (tray icon)
-    networkmanagerapplet
-
-    # waydroid helpers
-    waydroid-nftables
-    waydroid_script.packages.${pkgs.system}.waydroid_script
-    lzip
-  ];
 }

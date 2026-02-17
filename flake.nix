@@ -1,5 +1,5 @@
 {
-  description = "Kalin nix";
+  description = "NixOS config — edit meta.nix to personalize";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";

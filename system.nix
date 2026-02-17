@@ -4,33 +4,37 @@ let
   meta = import ./meta.nix;
 in
 {
+  # ── Nix ────────────────────────────────────────────────────────────
   nix.settings.experimental-features = [ "nix-command" "flakes" ];
   nixpkgs.config.allowUnfree = true;
 
-  boot.loader.systemd-boot.enable = true;
+  # ── Boot ───────────────────────────────────────────────────────────
+  boot.loader.systemd-boot.enable      = true;
   boot.loader.efi.canTouchEfiVariables = true;
 
-  networking.hostName = meta.hostName;
+  # ── Network ────────────────────────────────────────────────────────
+  networking.hostName              = meta.hostName;
   networking.networkmanager.enable = true;
-  networking.firewall.enable = true;
+  networking.firewall.enable       = true;
 
-  time.timeZone = meta.timeZone;
+  # ── Time ───────────────────────────────────────────────────────────
+  time.timeZone             = meta.timeZone;
   services.timesyncd.enable = true;
 
-  # Basic remote access (firewall stays closed unless you open it).
+  # ── SSH (firewall stays closed unless you open it) ────────────────
   services.openssh = {
-    enable = true;
+    enable       = true;
     openFirewall = false;
   };
 
-  # Automatic cleanup to avoid the store growing forever.
+  # ── Garbage collection ─────────────────────────────────────────────
   nix.gc = {
     automatic = true;
-    dates = "weekly";
-    options = "--delete-older-than 14d";
+    dates     = "weekly";
+    options   = "--delete-older-than 14d";
   };
   nix.optimise.automatic = true;
 
-  # DO NOT change this lightly; see the NixOS manual entry for `system.stateVersion`.
+  # ── DO NOT CHANGE (see NixOS manual → system.stateVersion) ────────
   system.stateVersion = meta.stateVersion;
 }
