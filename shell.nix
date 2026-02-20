@@ -4,7 +4,6 @@
   programs.zsh.enable = true;
 
   environment.systemPackages = with pkgs; [
-    foot
     # shell prompt
     starship
 
@@ -12,6 +11,6 @@
     git curl wget gnupg openssh
     unzip zip rsync
     jq ripgrep fd
-    btop fastfetch
+    fastfetch
   ];
 }

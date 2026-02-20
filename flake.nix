@@ -17,7 +17,7 @@
     nixosConfigurations.${meta.hostName} = nixpkgs.lib.nixosSystem {
       system = meta.system;
 
-      specialArgs = { inherit waydroid_script; };
+      specialArgs = { inherit waydroid_script niri; };
 
       modules = [
         ./configuration.nix

@@ -1,4 +1,4 @@
-{ config, pkgs, lib, ... }:
+{ config, pkgs, lib, niri, ... }:
 
 let
   meta = import ./meta.nix;
@@ -33,7 +33,11 @@ in
   };
 
   # ── Compositor: niri (Wayland) ─────────────────────────────────────
-  programs.niri.enable = true;
+  programs.niri = {
+    enable = true;
+    # Needed for native `include` support in config.kdl.
+    package = niri.packages.${pkgs.stdenv.hostPlatform.system}.niri-unstable;
+  };
 
   services.displayManager.ly.enable = true;
   services.displayManager.ly.settings.waylandsessions =
@@ -42,14 +46,22 @@ in
   environment.sessionVariables.NIXOS_OZONE_WL = "1";
 
   # ── XDG portals ───────────────────────────────────────────────────
+  # xdg-desktop-portal-wlr handles ScreenCast via zwlr-screencopy,
+  # which Niri implements. xdg-desktop-portal-gnome requires GNOME
+  # Shell and breaks screen sharing on non-GNOME compositors.
   xdg.portal = {
     enable = true;
     xdgOpenUsePortal = true;
     extraPortals = [
-      pkgs.xdg-desktop-portal-gnome
+      pkgs.xdg-desktop-portal-wlr
       pkgs.xdg-desktop-portal-gtk
     ];
-    config.niri."org.freedesktop.impl.portal.FileChooser" = [ "gtk" ];
+    config.niri = {
+      default                                        = [ "wlr" "gtk" ];
+      "org.freedesktop.impl.portal.ScreenCast"       = [ "wlr" ];
+      "org.freedesktop.impl.portal.Screenshot"       = [ "wlr" ];
+      "org.freedesktop.impl.portal.FileChooser"      = [ "gtk" ];
+    };
   };
 
   security.polkit.enable = true;

@@ -10,6 +10,7 @@ in
     ./display.nix
     ./shell.nix
     ./utils.nix
+    ./rice-packages.nix
   ];
 
   # User account

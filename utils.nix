@@ -32,28 +32,6 @@ in
   services.gvfs.enable    = true;
   services.tumbler.enable = true;
 
-  # ── Input groups (for kanata uinput access) ────────────────────────
- # users.groups.input  = {};
- # users.groups.uinput = {};
-
-  # ── Kanata (keyboard remapper) ─────────────────────────────────────
-  # Uses kanata-with-cmd so it can drive niri via IPC.
-  # Config lives in ~/.config/kanata/config.kbd (user dotfile).
- # systemd.services.kanata = {
-  #  description = "Kanata keyboard remapper";
-   # wantedBy    = [ "multi-user.target" ];
-   # serviceConfig = {
-    #  Type       = "notify";
-     # ExecStart  = "${lib.getExe pkgs.kanata-with-cmd} --cfg /home/${meta.userName}/.config/kanata/config.kbd";
-  #    Restart    = "on-failure";
-   #   RestartSec = 3;
-   #   SupplementaryGroups = [ "input" "uinput" ];
-   # };
- # };
-#  services.udev.extraRules = ''
-#    KERNEL=="uinput", MODE="0660", GROUP="uinput", OPTIONS+="static_node=uinput"
-#  '';
-
   # ── Apps (toggles in meta.nix) ─────────────────────────────────────
   programs.steam.enable   = meta.enableSteam;
 
@@ -66,31 +44,30 @@ in
   environment.systemPackages = with pkgs;
     [
       # build tools
-      python3 gnumake bison gcc binutils file flex
+      gnumake bison gcc binutils file flex
 
       # desktop
-      xwayland-satellite fuzzel file-roller xdg-utils
-      kanata-with-cmd quickshell
+      xwayland-satellite file-roller xdg-utils
 
-      # screenshots + clipboard
-      grimblast wl-clipboard slurp grim
+      # screenshots + clipboard + screen-share region picker
+      grimblast slurp
 
       # brightness / audio / media
-      brightnessctl pamixer playerctl
+      pamixer playerctl
 
       # idle + lock
-      swayidle swaylock
+      # swaylock and swayidle live in rice-packages.nix
 
       # notifications + tray
       libnotify networkmanagerapplet
 
       vivaldi
-      vscode
+      discord
     ]
     # waydroid helpers (only when enabled)
     ++ lib.optionals meta.enableWaydroid [
       waydroid-nftables
-      waydroid_script.packages.${pkgs.system}.waydroid_script
+      waydroid_script.packages.${pkgs.stdenv.hostPlatform.system}.waydroid_script
       lzip
     ];
 
