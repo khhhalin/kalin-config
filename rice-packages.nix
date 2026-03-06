@@ -6,6 +6,7 @@
     quickshell      # qs binary used for winbar and winmenu layershell UIs
     swaylock        # lock screen invoked via Super+Alt+L in niri binds
     swayidle        # idle daemon for auto-lock / monitor blanking
+    swaybg          # sets desktop wallpaper, used by quickshell background module
 
     # ── Terminal ─────────────────────────────────────────────────────
     foot            # Wayland terminal used by binds and winbar btop launches
@@ -42,5 +43,23 @@
     # ── Utilities ────────────────────────────────────────────────────
     python3         # runs app-list.py indexer from quickshell configs
     orca            # screen reader toggled by Super+Alt+S bind
+
+
+    # Qt6 runtime + Qt5Compat (provides Qt5Compat.GraphicalEffects)
+    qt6.qtbase
+    qt6.qtdeclarative
+    qt6.qtwayland
+    qt6.qt5compat            # CRITICAL: supplies the Qt5Compat.GraphicalEffects import
+
+    # Graphics
+    libGL
+
+    # ── File Sync ────────────────────────────────────────────────────
+    mutagen         # Bidirectional file sync tool for development workflows
+
+    # Ensure QML modules for Quickshell are available
+    (pkgs.quickshell.overrideAttrs (old: {
+      nativeBuildInputs = (old.nativeBuildInputs or []) ++ [ pkgs.wrapGAppsHook3 ];
+    }))
   ];
 }

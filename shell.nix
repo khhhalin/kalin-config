@@ -12,5 +12,6 @@
     unzip zip rsync
     jq ripgrep fd
     fastfetch
+    tmux
   ];
 }

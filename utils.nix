@@ -11,6 +11,10 @@ in
     pulse.enable = true;
     alsa.enable = true;
     alsa.support32Bit = true;
+    # WirePlumber is the session/policy manager that brokers PipeWire
+    # streams; required for portal-based screen capture to work.
+    # Defaults to true on NixOS 24.05+ but be explicit.
+    wireplumber.enable = true;
   };
 
   # ── Storage ────────────────────────────────────────────────────────
@@ -31,6 +35,7 @@ in
   programs.xfconf.enable = true;
   services.gvfs.enable    = true;
   services.tumbler.enable = true;
+  services.flatpak.enable = true;
 
   # ── Apps (toggles in meta.nix) ─────────────────────────────────────
   programs.steam.enable   = meta.enableSteam;
@@ -49,20 +54,29 @@ in
       # desktop
       xwayland-satellite file-roller xdg-utils
 
-      # screenshots + clipboard + screen-share region picker
+      # screenshots + clipboard
       grimblast slurp
 
       # brightness / audio / media
       pamixer playerctl
 
-      # idle + lock
-      # swaylock and swayidle live in rice-packages.nix
-
       # notifications + tray
       libnotify networkmanagerapplet
 
       vivaldi
-      discord
+      obsidian
+      ghostty
+      helix
+
+      # ── Discord ────────────────────────────────────────────────────
+      # vesktop: Vencord-based client with native PipeWire screen share.
+      # It has its own WebRTC implementation and does NOT depend on the
+      # xdg-desktop-portal ScreenCast call completing correctly — the
+      # most reliable option on any Wayland compositor.
+      vesktop
+
+      #
+      #globalprotect-openconnect
     ]
     # waydroid helpers (only when enabled)
     ++ lib.optionals meta.enableWaydroid [
