@@ -41,10 +41,15 @@ sudo nixos-rebuild switch --flake .#YourHostName
 flake.nix            ← entry point
 meta.nix             ← ★ personalize here ★
 configuration.nix    ← imports everything, defines user
-system.nix           ← boot, network, nix settings
-display.nix          ← niri, ly, portals, theming, quickshell
-shell.nix            ← zsh, CLI tools, starship
-utils.nix            ← audio, bluetooth, kanata, apps, packages
+
+nix/                 ← nix settings + stateVersion (rarely changed)
+system/              ← boot, network, time, fonts, ssh, gc
+display/             ← locale/keyboard, niri, portals, fonts, power, security
+shell/               ← zsh, CLI tools, starship
+utils/               ← audio, bluetooth, firmware, file manager, apps, packages
+containers/          ← podman/distrobox, packages, mime associations
+rice-packages/       ← compositor/desktop packages + power profiles
+
 quickshell/          ← QML panel files (deployed to /etc/xdg/quickshell/)
 ```
 

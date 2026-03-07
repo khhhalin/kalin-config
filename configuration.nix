@@ -6,12 +6,42 @@ in
 {
   imports = [
     ./hardware-configuration.nix
-    ./system.nix
-    ./display.nix
-    ./shell.nix
-    ./utils.nix
-    ./containers.nix
-    ./rice-packages.nix
+
+    ./nix/settings.nix
+    ./nix/state.nix
+
+    ./system/boot.nix
+    ./system/network.nix
+    ./system/time.nix
+    ./system/fonts.nix
+    ./system/ssh.nix
+    ./system/gc.nix
+
+    ./display/fonts.nix
+    ./display/power.nix
+    ./display/locale-keyboard.nix
+    ./display/compositor.nix
+    ./display/portals.nix
+    ./display/security.nix
+
+    ./shell/zsh.nix
+    ./shell/packages.nix
+
+    ./utils/audio.nix
+    ./utils/storage.nix
+    ./utils/bluetooth.nix
+    ./utils/firmware.nix
+    ./utils/filemanager.nix
+    ./utils/flatpak.nix
+    ./utils/apps.nix
+    ./utils/packages.nix
+
+    ./containers/services.nix
+    ./containers/packages.nix
+    ./containers/associations.nix
+
+    ./rice-packages/services.nix
+    ./rice-packages/packages.nix
   ];
 
   # User account
