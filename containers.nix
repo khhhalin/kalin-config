@@ -1,22 +1,20 @@
 { pkgs, lib, ... }:
 
 let
-  debbox = pkgs.writeShellScriptBin "debbox" (builtins.readFile ./scripts/debbox.sh);
+  distroHelperScript = builtins.readFile ./scripts/debbox.sh;
 
-  debboxFor = distro: pkgs.writeShellScriptBin ("debbox-" + distro) ''
-    exec debbox --distro ${distro} "$@"
-  '';
+  distroBin = name: pkgs.writeShellScriptBin name distroHelperScript;
 
-  debboxDebian = debboxFor "debian";
-  debboxUbuntu = debboxFor "ubuntu";
-  debboxFedora = debboxFor "fedora";
-  debboxArch   = debboxFor "arch";
+  debianBin = distroBin "debian";
+  ubuntuBin = distroBin "ubuntu";
+  fedoraBin = distroBin "fedora";
+  archBin   = distroBin "arch";
 
-  debboxDesktop = pkgs.makeDesktopItem {
-    name = "debbox-open";
-    desktopName = "Install DEB (Container)";
+  debDesktop = pkgs.makeDesktopItem {
+    name = "debian-deb-install";
+    desktopName = "Install DEB (Debian container)";
     comment = "Install a .deb into a Debian container (Podman/Distrobox)";
-    exec = "foot -e debbox %f";
+    exec = "foot -e debian install %f";
     terminal = false;
     categories = [ "System" "Utility" ];
     mimeTypes = [
@@ -44,24 +42,23 @@ in
   environment.systemPackages = with pkgs; [
     podman
     distrobox
-    debbox
-    debboxDebian
-    debboxUbuntu
-    debboxFedora
-    debboxArch
-    debboxDesktop
+    debianBin
+    ubuntuBin
+    fedoraBin
+    archBin
+    debDesktop
   ];
 
   # System-wide file association for .deb double-clicks (no Home Manager needed).
   environment.etc."xdg/mimeapps.list".text = ''
     [Default Applications]
-    application/vnd.debian.binary-package=debbox-open.desktop
-    application/x-debian-package=debbox-open.desktop
-    application/x-deb=debbox-open.desktop
+    application/vnd.debian.binary-package=debian-deb-install.desktop
+    application/x-debian-package=debian-deb-install.desktop
+    application/x-deb=debian-deb-install.desktop
 
     [Added Associations]
-    application/vnd.debian.binary-package=debbox-open.desktop
-    application/x-debian-package=debbox-open.desktop
-    application/x-deb=debbox-open.desktop
+    application/vnd.debian.binary-package=debian-deb-install.desktop
+    application/x-debian-package=debian-deb-install.desktop
+    application/x-deb=debian-deb-install.desktop
   '';
 }

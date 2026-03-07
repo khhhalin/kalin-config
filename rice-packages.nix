@@ -1,6 +1,7 @@
 { pkgs, ... }:
 
 {
+  services.power-profiles-daemon.enable = true;
   environment.systemPackages = with pkgs; [
     # ── Compositor / shell ───────────────────────────────────────────
     quickshell      # qs binary used for winbar and winmenu layershell UIs
