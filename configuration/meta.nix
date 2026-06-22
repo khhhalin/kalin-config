@@ -29,9 +29,10 @@
   };
 
   # ── Optional features (set to false to disable) ──────────────────
-  enableBluetooth = true;
-  enableSteam     = true;
-  enableWaydroid  = true;           # Android apps via Waydroid
+  enableBluetooth    = true;
+  enableSteam        = true;
+  enableWaydroid     = true;        # Android apps via Waydroid
+  enableLookingGlass = true;        # Looking Glass KVM framebuffer relay
 
   # ── Paths (rarely need changing) ──────────────────────────────────
   quickshellConfigPath = "/etc/xdg/quickshell";

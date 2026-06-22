@@ -1,58 +1,35 @@
-{ pkgs, ... }:
+{ ... }:
 
-let
-  meta = import ./meta.nix;
-in
 {
   imports = [
-    ./hardware-configuration.nix
+    ./hardware/hardware-configuration.nix
 
-    ./nix/settings.nix
-    ./nix/state.nix
-
+    ./system/nix.nix
     ./system/boot.nix
     ./system/network.nix
-    ./system/time.nix
+    ./system/core.nix
     ./system/fonts.nix
-    ./system/ssh.nix
-    ./system/gc.nix
 
-    ./display/fonts.nix
-    ./display/power.nix
-    ./display/locale-keyboard.nix
-    ./display/compositor.nix
-    ./display/portals.nix
-    ./display/security.nix
+    ./environment/display/locale-keyboard.nix
+    ./environment/display/compositor.nix
+    ./environment/display/hyprland-caelestia.nix
+    ./environment/display/portals.nix
+    ./environment/display/session.nix
+    ./environment/shell.nix
+    ./environment/packages.nix
+    ./environment/apps.nix
+    ./environment/files.nix
+    ./environment/nix-ld.nix
 
-    ./shell/zsh.nix
-    ./shell/packages.nix
+    ./hardware/audio.nix
+    ./hardware/bluetooth.nix
+    ./hardware/peripherals.nix
+    ./hardware/windows.nix
 
-    ./utils/audio.nix
-    ./utils/storage.nix
-    ./utils/bluetooth.nix
-    ./utils/firmware.nix
-    ./utils/filemanager.nix
-    ./utils/flatpak.nix
-    ./utils/apps.nix
-    ./utils/packages.nix
+    ./containers/default.nix
 
-    ./containers/services.nix
-    ./containers/packages.nix
-    ./containers/associations.nix
+    ./environment/rice/default.nix
 
-    ./rice-packages/services.nix
-    ./rice-packages/packages.nix
+    ./configuration/users.nix
   ];
-
-  # User account
-  users.users.${meta.userName} = {
-    isNormalUser = true;
-    description = meta.fullName;
-    extraGroups = [ "wheel" "networkmanager" "input" "uinput" "video" ];
-    shell = pkgs.zsh;
-
-    # Required for rootless Podman user namespaces.
-    subUidRanges = [ { startUid = 100000; count = 65536; } ];
-    subGidRanges = [ { startGid = 100000; count = 65536; } ];
-  };
 }

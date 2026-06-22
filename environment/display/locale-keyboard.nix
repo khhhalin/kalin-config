@@ -1,7 +1,7 @@
 { ... }:
 
 let
-  meta = import ../meta.nix;
+  meta = import ../../configuration/meta.nix;
 in
 {
   i18n.supportedLocales = meta.supportedLocales;

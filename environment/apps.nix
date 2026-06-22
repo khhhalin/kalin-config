@@ -1,9 +1,11 @@
 { pkgs, lib, ... }:
 
 let
-  meta = import ../meta.nix;
+  meta = import ../configuration/meta.nix;
 in
 {
+  services.flatpak.enable = true;
+
   programs.steam.enable = meta.enableSteam;
 
   virtualisation.waydroid = lib.mkIf meta.enableWaydroid {

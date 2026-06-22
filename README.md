@@ -8,18 +8,18 @@ Minimal NixOS config with **niri** (Wayland compositor), **kanata** (keyboard re
 # 1. Clone this repo
 git clone <url> ~/home-config && cd ~/home-config
 
-# 2. Edit meta.nix — this is the ONLY file you need to touch
+# 2. Edit configuration/meta.nix — this is the ONLY file you need to touch
 #    Change hostName, userName, timeZone, keyboard layout, toggle features…
-nano meta.nix
+nano configuration/meta.nix
 
 # 3. Copy your hardware config
-sudo nixos-generate-config --show-hardware-config > hardware-configuration.nix
+sudo nixos-generate-config --show-hardware-config > hardware/hardware-configuration.nix
 
 # 4. Build & switch
 sudo nixos-rebuild switch --flake .#YourHostName
 ```
 
-## What to change in `meta.nix`
+## What to change in `configuration/meta.nix`
 
 | Field              | What it does                          | Example               |
 |--------------------|---------------------------------------|------------------------|
@@ -38,19 +38,39 @@ sudo nixos-rebuild switch --flake .#YourHostName
 ## File layout
 
 ```
-flake.nix            ← entry point
-meta.nix             ← ★ personalize here ★
-configuration.nix    ← imports everything, defines user
+flake.nix                 ← entry point
+configuration.nix         ← imports everything
 
-nix/                 ← nix settings + stateVersion (rarely changed)
-system/              ← boot, network, time, fonts, ssh, gc
-display/             ← locale/keyboard, niri, portals, fonts, power, security
-shell/               ← zsh, CLI tools, starship
-utils/               ← audio, bluetooth, firmware, file manager, apps, packages
-containers/          ← podman/distrobox, packages, mime associations
-rice-packages/       ← compositor/desktop packages + power profiles
+configuration/
+  meta.nix                ← ★ personalize here ★
+  users.nix               ← user account definition
 
-quickshell/          ← QML panel files (deployed to /etc/xdg/quickshell/)
+hardware/                 ← hardware support
+  hardware-configuration.nix
+  audio.nix
+  bluetooth.nix
+  peripherals.nix         ← firmware (fwupd) + disk support (udisks2)
+  windows.nix             ← KVM / Looking Glass
+
+system/                   ← core system services
+  nix.nix                 ← nix daemon, settings, GC, stateVersion
+  boot.nix
+  network.nix
+  core.nix                ← time + SSH
+  fonts.nix
+
+environment/              ← user-facing desktop environment
+  shell.nix               ← zsh, git, CLI tools
+  packages.nix
+  apps.nix                ← steam, waydroid, flatpak
+  files.nix               ← thunar + gvfs
+  nix-ld.nix
+  display/                ← niri, hyprland, portals, input, session
+  rice/                   ← quickshell, compositor packages, power profiles
+
+containers/default.nix    ← podman/distrobox, helpers, mime associations
+
+quickshell/               ← QML panel files (deployed to /etc/xdg/quickshell/)
 ```
 
 ## Dotfiles (`~/.config/`)

@@ -21,12 +21,5 @@
 # Keep the .gitignore itself
 !.gitignore
 
-# Optional common ignores
-result
-.cache
-.DS_Store
-*.pem
-*.key
-*.gpg
-.env
-node_modules/
+!scripts/
+!scripts/**
