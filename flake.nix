@@ -9,7 +9,10 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
-    waydroid_script.url = "github:casualsnek/waydroid_script";
+    waydroid_script = {
+      url = "github:casualsnek/waydroid_script";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
 
     niri = {
       url = "github:sodiboo/niri-flake";
