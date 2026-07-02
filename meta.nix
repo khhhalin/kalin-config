@@ -1,16 +1,12 @@
+# meta.nix — single source of truth. Every module reads from here.
 {
-  # ╔══════════════════════════════════════════════════════════════════╗
-  # ║  meta.nix — Edit this file to personalize the entire system.   ║
-  # ║  Every module reads from here. Change once, applies everywhere.║
-  # ╚══════════════════════════════════════════════════════════════════╝
-
   # ── Machine ────────────────────────────────────────────────────────
-  hostName = "KalinBook";           # flake output name: .#KalinBook
+  hostName = "KalinBook";          # flake output name: .#KalinBook
   system   = "x86_64-linux";       # or "aarch64-linux" for ARM
 
   # ── User ───────────────────────────────────────────────────────────
   userName = "kalin";
-  fullName = "";                    # shows in login screen / finger
+  fullName = "";                   # shows in login screen / finger
 
   # ── Locale & time ─────────────────────────────────────────────────
   timeZone      = "Europe/Warsaw";
@@ -28,13 +24,12 @@
     options = "terminate:ctrl_alt_bksp";
   };
 
-  # ── Optional features (set to false to disable) ──────────────────
+  # ── Optional features (set to false to disable) ───────────────────
   enableBluetooth    = true;
   enableSteam        = true;
   enableWaydroid     = true;        # Android apps via Waydroid
-  enableLookingGlass = true;        # Looking Glass KVM framebuffer relay
 
-  # ── Paths (rarely need changing) ──────────────────────────────────
-  quickshellConfigPath = "/etc/xdg/quickshell";
-  stateVersion = "24.11";          # bump only on NixOS release upgrade
+
+  # bump only on NixOS release upgrade (see system.stateVersion in the manual)
+  stateVersion = "24.11";
 }

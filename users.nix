@@ -1,14 +1,10 @@
-{ pkgs, lib, ... }:
+{ pkgs, meta, ... }:
 
-let
-  meta = import ./meta.nix;
-in
 {
   users.users.${meta.userName} = {
     isNormalUser = true;
     description = meta.fullName;
-    extraGroups = [ "wheel" "networkmanager" "input" "uinput" "video" ]
-      ++ lib.optionals meta.enableLookingGlass [ "kvm" "libvirtd" ];
+    extraGroups = [ "wheel" "networkmanager" "input" "uinput" "video" "tty" ];
     shell = pkgs.zsh;
 
     # Required for rootless Podman user namespaces.

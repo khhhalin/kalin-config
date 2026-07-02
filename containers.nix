@@ -1,13 +1,12 @@
+# Podman + distrobox, with distro helper scripts and a .deb file handler.
 { pkgs, lib, ... }:
 
 let
-  distroHelperScript = builtins.readFile ../scripts/debbox.sh;
+  distroHelperScript = builtins.readFile ./scripts/distrobox.sh;
   distroBin = name: pkgs.writeShellScriptBin name distroHelperScript;
 
-  debianBin = distroBin "debian";
-  ubuntuBin = distroBin "ubuntu";
-  fedoraBin = distroBin "fedora";
-  archBin = distroBin "arch";
+  # `pkgs` — browse installed packages by system (host + containers) in fzf.
+  pkgsBin = pkgs.writeShellScriptBin "pkgs" (builtins.readFile ./scripts/pkgs.sh);
 
   debDesktop = pkgs.makeDesktopItem {
     name = "debian-deb-install";
@@ -25,23 +24,22 @@ let
 in
 {
   virtualisation.containers.enable = true;
-
   virtualisation.podman = {
     enable = true;
     dockerCompat = true;
     defaultNetwork.settings.dns_enabled = true;
   };
-
   security.unprivilegedUsernsClone = lib.mkDefault true;
 
-  environment.systemPackages = with pkgs; [
-    podman
-    distrobox
-    debianBin
-    ubuntuBin
-    fedoraBin
-    archBin
+  environment.systemPackages = [
+    pkgs.podman
+    pkgs.distrobox
+    (distroBin "debian")
+    (distroBin "ubuntu")
+    (distroBin "fedora")
+    (distroBin "arch")
     debDesktop
+    pkgsBin
   ];
 
   environment.etc."xdg/mimeapps.list".text = ''

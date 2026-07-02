@@ -19,29 +19,35 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
-    caelestia_shell = {
-      url = "github:caelestia-dots/shell";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
-
     quickshell = {
       url = "git+https://git.outfoxxed.me/outfoxxed/quickshell?ref=refs/tags/v0.3.0";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+
+    # Personal Wayland compositor (dwl fork). Pins its own nixpkgs for wlroots
+    # 0.20 — intentionally does NOT follow system nixpkgs, which would break it.
+    kalin-wm.url = "git+file:///home/kalin/environment/kalin-wm";
   };
 
-  outputs = inputs@{ self, nixpkgs, ... }:
+  outputs = inputs@{ nixpkgs, ... }:
   let
-    meta = import ./configuration/meta.nix;
+    meta = import ./meta.nix;
   in
   {
+    # `nix fmt` — note: this normalizes lists to one item per line.
+    formatter.${meta.system} = nixpkgs.legacyPackages.${meta.system}.nixfmt;
+
     nixosConfigurations.${meta.hostName} = nixpkgs.lib.nixosSystem {
       system = meta.system;
-
-      specialArgs = { inherit inputs; };
-
+      specialArgs = { inherit inputs meta; };
       modules = [
-        ./configuration.nix
+        ./hardware-configuration.nix
+        ./system.nix
+        ./hardware.nix
+        ./display.nix
+        ./desktop.nix
+        ./containers.nix
+        ./users.nix
         inputs.niri.nixosModules.niri
       ];
     };

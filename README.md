@@ -8,68 +8,47 @@ Minimal NixOS config with **niri** (Wayland compositor), **kanata** (keyboard re
 # 1. Clone this repo
 git clone <url> ~/home-config && cd ~/home-config
 
-# 2. Edit configuration/meta.nix — this is the ONLY file you need to touch
+# 2. Edit meta.nix — this is the ONLY file you need to touch
 #    Change hostName, userName, timeZone, keyboard layout, toggle features…
-nano configuration/meta.nix
+nano meta.nix
 
 # 3. Copy your hardware config
-sudo nixos-generate-config --show-hardware-config > hardware/hardware-configuration.nix
+sudo nixos-generate-config --show-hardware-config > hardware-configuration.nix
 
 # 4. Build & switch
 sudo nixos-rebuild switch --flake .#YourHostName
 ```
 
-## What to change in `configuration/meta.nix`
+## What to change in `meta.nix`
 
-| Field              | What it does                          | Example               |
-|--------------------|---------------------------------------|------------------------|
-| `hostName`         | Machine name & flake output           | `"MyLaptop"`           |
-| `userName`         | Your login name                       | `"alex"`               |
-| `timeZone`         | System timezone                       | `"America/New_York"`   |
-| `xkb.layout`      | Keyboard layout                       | `"us"`                 |
-| `enableSteam`      | Install Steam                         | `false`                |
-| `enableWaydroid`   | Android apps via Waydroid             | `false`                |
-| `enableBluetooth`  | Bluetooth + Blueman                   | `false`                |
-| `accentColor`      | Theme accent (niri, fuzzel, foot…)    | `"#7aa2f7"`            |
-| `bgColor`          | Background color                      | `"#1a1b26"`            |
-| `gaps`             | Window gaps in px                     | `12`                   |
-| `cursorTheme`      | Cursor theme name                     | `"Bibata-Modern-Ice"`  |
+| Field                | What it does                  | Example               |
+|----------------------|-------------------------------|------------------------|
+| `hostName`           | Machine name & flake output   | `"MyLaptop"`           |
+| `userName`           | Your login name               | `"alex"`               |
+| `timeZone`           | System timezone               | `"America/New_York"`   |
+| `xkb.layout`         | Keyboard layout               | `"us"`                 |
+| `enableSteam`        | Install Steam                 | `false`                |
+| `enableWaydroid`     | Android apps via Waydroid     | `false`                |
+| `enableBluetooth`    | Bluetooth + Blueman           | `false`                |
+| `enableLookingGlass` | Looking Glass KVM relay       | `false`                |
 
 ## File layout
 
+One file per domain — `flake.nix` imports them all.
+
 ```
-flake.nix                 ← entry point
-configuration.nix         ← imports everything
+flake.nix                 ← entry point; passes meta into every module
+meta.nix                  ← ★ personalize here ★
+users.nix                 ← user account definition
+hardware-configuration.nix← generated; do not edit by hand
 
-configuration/
-  meta.nix                ← ★ personalize here ★
-  users.nix               ← user account definition
+system.nix                ← boot, nix daemon/GC, network, time+SSH, fonts, stateVersion
+hardware.nix              ← audio (pipewire), bluetooth, fwupd/udisks2, Wine, Looking Glass
+display.nix               ← niri + kalin-wm, ly, locale/keyboard, xdg portals, session
+desktop.nix               ← all packages, zsh/git, thunar, nix-ld, steam/waydroid, quickshell
+containers.nix            ← podman/distrobox, distro helpers, .deb mime handler
 
-hardware/                 ← hardware support
-  hardware-configuration.nix
-  audio.nix
-  bluetooth.nix
-  peripherals.nix         ← firmware (fwupd) + disk support (udisks2)
-  windows.nix             ← KVM / Looking Glass
-
-system/                   ← core system services
-  nix.nix                 ← nix daemon, settings, GC, stateVersion
-  boot.nix
-  network.nix
-  core.nix                ← time + SSH
-  fonts.nix
-
-environment/              ← user-facing desktop environment
-  shell.nix               ← zsh, git, CLI tools
-  packages.nix
-  apps.nix                ← steam, waydroid, flatpak
-  files.nix               ← thunar + gvfs
-  nix-ld.nix
-  display/                ← niri, hyprland, portals, input, session
-  rice/                   ← quickshell, compositor packages, power profiles
-
-containers/default.nix    ← podman/distrobox, helpers, mime associations
-
+scripts/                  ← shell scripts embedded by modules (e.g. distrobox.sh)
 quickshell/               ← QML panel files (deployed to /etc/xdg/quickshell/)
 ```
 
