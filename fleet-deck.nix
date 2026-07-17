@@ -4,9 +4,10 @@
 # project's own flake so the daemon always uses the node/node-pty build it was
 # installed with, not this flake's nixpkgs (native-addon ABI must match).
 #
-# `claude` and `git` come from /run/current-system/sw/bin via PATH below.
-# The supervised project is hardcoded here for now; change --project (and
-# `systemctl --user restart fleet-deck`) to point it elsewhere.
+# `claude` and `git` come from /run/current-system/sw/bin via PATH below
+# (kimi lives at ~/.kimi-code/bin/kimi, referenced absolutely by the app).
+# Supervised projects come from ~/fleet-deck/config/keepers.json — edit that
+# (hot-reloaded) rather than this unit to add/remove projects.
 { pkgs, ... }:
 {
   systemd.user.services.fleet-deck = {
@@ -20,7 +21,7 @@
 
     serviceConfig = {
       WorkingDirectory = "/home/kalin/fleet-deck";
-      ExecStart = "/run/current-system/sw/bin/nix develop /home/kalin/fleet-deck -c node src/server.js --project /home/kalin/environment/kalin-wm";
+      ExecStart = "/run/current-system/sw/bin/nix develop /home/kalin/fleet-deck -c node src/server.js";
       # Killing the daemon kills every Claude session it owns — only restart
       # on real failure, never as part of a routine stop.
       Restart = "on-failure";
