@@ -54,6 +54,7 @@
         ./users.nix
         ./claude-tty.nix
         ./kalin-tmux.nix
+        ./fleet-deck.nix
         inputs.niri.nixosModules.niri
       ];
     };
