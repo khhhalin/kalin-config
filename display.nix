@@ -3,12 +3,15 @@
 
 let
   system = pkgs.stdenv.hostPlatform.system;
+  dirs = meta.dirs;
   kalinPkg = inputs.kalin-wm.packages.${system}.default;
 
-  # Start kalin-wm together with its quickshell bar + a terminal.
+  # Start kalin-wm with a terminal server; the quickshell bar is NOT spawned
+  # here anymore — it runs as the self-healing kalin-bar user service (see
+  # desktop.nix), which retries until the compositor socket exists.
   kalinSession = pkgs.writeShellScriptBin "kalin-wm-session" ''
-    export QS_CONFIG_PATH="/home/kalin/environment/quickshell"
-    exec ${kalinPkg}/bin/kalin-wm -s 'qs & foot --server'
+    export QS_CONFIG_PATH="${dirs.quickshell}"
+    exec ${kalinPkg}/bin/kalin-wm -s 'foot --server'
   '';
 
   # Dev launcher: run the LOCAL working-tree build (build/kalin-wm) with the
@@ -17,9 +20,15 @@ let
   # "kalin-wm" session above uses the pinned flake build instead.
   kalinDev = pkgs.writeShellScriptBin "kalinwm" ''
     set -euo pipefail
-    root=/home/kalin/environment/kalin-wm
+    root=${dirs.kalinWm}
     bin="$root/build/kalin-wm"
-    export QS_CONFIG_PATH=/home/kalin/environment/quickshell
+    export QS_CONFIG_PATH=${dirs.quickshell}
+    # Paper-mode shaders need the custom-GLSL-capable GLES2 renderer and an
+    # absolute shader dir (config `shaders_dir` is CWD-relative and this runs
+    # from your login cwd, not the repo root — without this the subsystem logs
+    # "cannot read shaders/paper.frag" and self-disables). See obsidian shaders.md.
+    export WLR_RENDERER=gles2
+    export KALIN_SHADER_DIR="$root/shaders"
     if [ ! -x "$bin" ]; then
       echo "kalinwm: dev build missing — building (nix develop -c make)…"
       ( cd "$root" && nix develop -c make clean all )
@@ -30,11 +39,13 @@ let
   '';
 
   # Portal routing for a screencast/screenshot backend; everything else → gtk.
+  # FileChooser is routed to Nautilus so the file picker dialog is the actual
+  # file manager instead of the bundled GTK chooser.
   routeVia = backend: {
     default = [ backend "gtk" ];
     "org.freedesktop.impl.portal.ScreenCast" = [ backend ];
     "org.freedesktop.impl.portal.Screenshot" = [ backend ];
-    "org.freedesktop.impl.portal.FileChooser" = [ "gtk" ];
+    "org.freedesktop.impl.portal.FileChooser" = [ "nautilus" ];
     "org.freedesktop.impl.portal.Access" = [ "gtk" ];
     "org.freedesktop.impl.portal.Notification" = [ "gtk" ];
   };

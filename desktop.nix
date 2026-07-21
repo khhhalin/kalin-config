@@ -3,10 +3,11 @@
 
 let
   system = pkgs.stdenv.hostPlatform.system;
+  dirs = meta.dirs;
 
-  # Quickshell pinned to v0.3.0 (nixpkgs ships 0.2.x). Needs wrapGAppsHook3
-  # for GApps schemas, so it carries a real override.
-  quickshell = (inputs.quickshell.packages.${system}.default).overrideAttrs (old: {
+  # nixpkgs quickshell is new enough now (0.3.0, same as the old pin) — no
+  # flake input needed, only the wrapGAppsHook3 override for GApps schemas.
+  quickshell = pkgs.quickshell.overrideAttrs (old: {
     nativeBuildInputs = (old.nativeBuildInputs or []) ++ [ pkgs.wrapGAppsHook3 ];
   });
 
@@ -197,47 +198,61 @@ let
     echo "$entry" | cliphist decode | wl-copy
   '';
 
+  # Warm-amber fzf app launcher — replaces fuzzel on Super+p / tap-Super. One
+  # merged list over GUI .desktop apps + $PATH commands + live tmux sessions,
+  # themed to match the bar TUIs and foot. The script lives in the kalin-wm
+  # working tree (like the `kalinwm` dev launcher) so theme/behaviour tweaks
+  # need no rebuild; this wrapper only pins the tools it needs on PATH (and
+  # inherits the rest of PATH so every user command shows up in the $PATH source).
+  kalinLaunch = pkgs.writeShellScriptBin "kalin-launch" ''
+    export PATH="${pkgs.lib.makeBinPath [
+      pkgs.fzf pkgs.foot pkgs.tmux pkgs.util-linux pkgs.python3 pkgs.coreutils
+    ]}:$PATH"
+    exec ${dirs.kalinWm}/tools/launcher/kalin-launch "$@"
+  '';
+
   # CLI wrappers around kalin-wm's IPC dock/undock commands (see
-  # obsidian/ipc-socket.md in the kalin-wm repo). $KALIN_IPC_SOCKET is set by
+  # obsidian/ipc-socket.md in the kalin-wm repo). One script exposed under
+  # both names — $0 selects the message shape. $KALIN_IPC_SOCKET is set by
   # kalin-wm itself before forking its startup command, so any child process
   # (including these) inherits it. Uses python3's stdlib for the raw
   # AF_UNIX write rather than netcat, since netcat's `-U` unix-socket flag
   # isn't portable across the openbsd/gnu/busybox variants.
-  kalinDock = pkgs.writeShellScriptBin "kalin-dock" ''
-    set -euo pipefail
-    if [ "$#" -ne 5 ]; then
-      echo "usage: kalin-dock <appid> <x> <y> <w> <h>" >&2
-      exit 1
-    fi
-    if [ -z "''${KALIN_IPC_SOCKET:-}" ]; then
-      echo "kalin-dock: \$KALIN_IPC_SOCKET is not set (not running under kalin-wm?)" >&2
-      exit 1
-    fi
-    exec ${pkgs.python3}/bin/python3 -c '
+  kalinIpc = let
+    dock = pkgs.writeShellScriptBin "kalin-dock" ''
+      set -euo pipefail
+      case "$(basename "$0")" in
+        kalin-dock)
+          if [ "$#" -ne 5 ]; then
+            echo "usage: kalin-dock <appid> <x> <y> <w> <h>" >&2
+            exit 1
+          fi
+          msg="dock $*"
+          ;;
+        kalin-undock)
+          if [ "$#" -ne 1 ]; then
+            echo "usage: kalin-undock <appid>" >&2
+            exit 1
+          fi
+          msg="undock $1"
+          ;;
+      esac
+      if [ -z "''${KALIN_IPC_SOCKET:-}" ]; then
+        echo "$(basename "$0"): \$KALIN_IPC_SOCKET is not set (not running under kalin-wm?)" >&2
+        exit 1
+      fi
+      exec ${pkgs.python3}/bin/python3 -c '
 import os, socket, sys
 s = socket.socket(socket.AF_UNIX)
 s.connect(os.environ["KALIN_IPC_SOCKET"])
-s.send(("dock " + " ".join(sys.argv[1:]) + "\n").encode())
-' "$@"
-  '';
-
-  kalinUndock = pkgs.writeShellScriptBin "kalin-undock" ''
-    set -euo pipefail
-    if [ "$#" -ne 1 ]; then
-      echo "usage: kalin-undock <appid>" >&2
-      exit 1
-    fi
-    if [ -z "''${KALIN_IPC_SOCKET:-}" ]; then
-      echo "kalin-undock: \$KALIN_IPC_SOCKET is not set (not running under kalin-wm?)" >&2
-      exit 1
-    fi
-    exec ${pkgs.python3}/bin/python3 -c '
-import os, socket, sys
-s = socket.socket(socket.AF_UNIX)
-s.connect(os.environ["KALIN_IPC_SOCKET"])
-s.send(("undock " + sys.argv[1] + "\n").encode())
-' "$@"
-  '';
+s.send((sys.argv[1] + "\n").encode())
+' "$msg"
+    '';
+  in pkgs.symlinkJoin {
+    name = "kalin-ipc";
+    paths = [ dock ];
+    postBuild = ''ln -s kalin-dock $out/bin/kalin-undock'';
+  };
 
   # sudo askpass helper: a native GUI popup (zenity) that asks for the sudo
   # password on the real desktop, independent of whatever invoked `sudo -A`.
@@ -259,47 +274,155 @@ s.send(("undock " + sys.argv[1] + "\n").encode())
   # panels don't depend on what else happens to be installed; the display
   # backend needs nothing on PATH (kalin-wm IPC via $KALIN_IPC_SOCKET) and
   # bluetooth/battery talk D-Bus (BlueZ/UPower) directly via dbus-fast.
-  barTuiEnv = pkgs.python3.withPackages (ps: [ ps.textual ps.psutil ps.dbus-fast ]);
+  barTuiEnv = pkgs.python3.withPackages (ps: [ ps.textual ps.textual-image ps.psutil ps.dbus-fast ]);
   barTuis = pkgs.writeShellScriptBin "kalin-bar-tui" ''
     PATH="${pkgs.lib.makeBinPath [
       pkgs.networkmanager pkgs.wireplumber pkgs.pipewire
       pkgs.cliphist pkgs.wl-clipboard pkgs.power-profiles-daemon
+      pkgs.foot
     ]}:$PATH"
     export PYTHONPATH=${inputs.kalin-wm}/tools/bar-tuis
     exec ${barTuiEnv}/bin/python3 -m kalin_tuis "$@"
   '';
 
-  # Persistent-terminal wrapper: attach-or-create a tmux session that outlives
-  # this foot window and any compositor restart (the server is the kalin-tmux
-  # user service). With no arg each new terminal mints a fresh, uniquely-named
-  # session so terminals are independent; a given name reattaches that session
-  # (used by kalin-term-pick). We `unset TMUX` because kalin-wm's spawn() runs
-  # apps inside a `tmux new-window -t kalin-apps` supervisor window, so $TMUX is
-  # set and a plain attach would be refused as nesting — unsetting it makes the
-  # per-terminal session a normal sibling in the same server. (Part 3's
-  # spawn-direct will later drop the redundant supervisor layer.) Closing foot
-  # just detaches; Ctrl-D ends the session as usual.
+  # The TUI bottom bar's host terminal (see quickshell's BarHost.qml and the
+  # kalin-wm repo's obsidian/implementation/tui-bar.md). kitty rather than
+  # foot: the taskbar renders raster app icons over the kitty graphics
+  # protocol (textual-image); foot+sixel corrupts rows under Textual and
+  # ghostty needs OpenGL 4.3 this host lacks. kitty is deliberately NOT in
+  # systemPackages — it exists only as the bar's canvas, not a user terminal.
+  # The bar python is invoked by ABSOLUTE path: a bare `python3` under kitty
+  # resolves to kitty's own bundled interpreter (nixpkgs wrapper PATH-prefix)
+  # — no textual — and the bar crash-loops (found live, 2026-07-17).
+  # background must stay exactly Theme.bar/foot's #1e1915 (matching-alpha
+  # translucency, same semantics as foot's alpha-mode=matching).
+  kalinBarKitty = pkgs.writeShellScriptBin "kalin-bar-kitty" ''
+    if [ "$#" -ne 1 ]; then
+      echo "usage: kalin-bar-kitty <app-id>" >&2
+      exit 2
+    fi
+    export PYTHONPATH=${inputs.kalin-wm}/tools/bar-tuis
+    PATH="${pkgs.lib.makeBinPath [ pkgs.foot barTuis ]}:$PATH"
+    exec ${pkgs.kitty}/bin/kitty --config NONE --class="$1" \
+      -o background='#1e1915' -o background_opacity=0.88 -o font_size=11 \
+      -o font_family='JetBrainsMono Nerd Font' \
+      ${barTuiEnv}/bin/python3 -m kalin_tuis bar
+  '';
+
+  # Persistent-terminal wrapper: attach-or-create the shared "terminals" tmux
+  # session — the browser-of-terminals model: one viewer foot, tmux windows as
+  # its tabs, all outliving any foot window and any compositor restart (the
+  # server is the kalin-tmux user service). A name arg attaches/creates that
+  # session instead (the scratchpad bind uses `kalin-term scratch`). We
+  # `unset TMUX` because kalin-wm's spawn() runs apps inside a
+  # `tmux new-window -t kalin-apps` supervisor window, so $TMUX is set and a
+  # plain attach would be refused as nesting — unsetting it makes the session a
+  # normal sibling in the same server. (Part 3's spawn-direct will later drop
+  # the redundant supervisor layer.) Closing foot just detaches; Ctrl-D closes
+  # a tab as usual.
   kalinTerm = pkgs.writeShellScriptBin "kalin-term" ''
     set -u
     unset TMUX TMUX_PANE
-    name="''${1:-term-$(${pkgs.coreutils}/bin/date +%H%M%S)}"
-    exec ${pkgs.tmux}/bin/tmux new-session -A -s "$name"
+    exec ${pkgs.tmux}/bin/tmux new-session -A -s "''${1:-terminals}"
   '';
 
-  # Session picker: fuzzel over the live tmux sessions (plus a "new terminal"
-  # entry), opening the chosen one in a fresh foot. Reattaching a session that
-  # already has a client just mirrors it (normal tmux).
+  # Raise a viewer window via the compositor IPC (query the state greeting's
+  # clients list, then send "focus <id>"); exit 1 if no client with the given
+  # app-id (default kalin-terminals) exists so callers can spawn one. Same
+  # python AF_UNIX idiom as kalinIpc below.
+  kalinTermFocus = pkgs.writeShellScriptBin "kalin-term-focus" ''
+    set -u
+    if [ -z "''${KALIN_IPC_SOCKET:-}" ]; then
+      echo "kalin-term-focus: \$KALIN_IPC_SOCKET is not set (not running under kalin-wm?)" >&2
+      exit 1
+    fi
+    exec ${pkgs.python3}/bin/python3 -c '
+import json, os, socket, sys
+appid = sys.argv[1] if len(sys.argv) > 1 else "kalin-terminals"
+path = os.environ["KALIN_IPC_SOCKET"]
+q = socket.socket(socket.AF_UNIX)
+q.settimeout(2)
+q.connect(path)
+state = json.loads(q.makefile("r").readline())
+q.close()
+for c in state.get("clients", []):
+    if c.get("appid") == appid:
+        s = socket.socket(socket.AF_UNIX)
+        s.settimeout(2)
+        s.connect(path)
+        s.send(("focus %d\n" % c["id"]).encode())
+        s.close()
+        sys.exit(0)
+sys.exit(1)
+' "$@"
+  '';
+
+  # Super+T: browser-style "new tab" — add a window to the shared terminals
+  # session, then raise the existing viewer foot; only spawn a new foot when
+  # none is up (first open, or after a compositor crash — reattaching then
+  # restores every tab at once).
+  kalinTermTab = pkgs.writeShellScriptBin "kalin-term-tab" ''
+    set -u
+    tmux=${pkgs.tmux}/bin/tmux
+    if $tmux has-session -t terminals 2>/dev/null; then
+      $tmux new-window -t terminals -c "$HOME"
+    else
+      $tmux new-session -d -s terminals
+    fi
+    ${kalinTermFocus}/bin/kalin-term-focus 2>/dev/null && exit 0
+    exec ${pkgs.util-linux}/bin/setsid -f ${pkgs.foot}/bin/foot \
+      --app-id=kalin-terminals -e ${kalinTerm}/bin/kalin-term
+  '';
+
+  # Tab picker: fuzzel over the windows of the shared terminals session;
+  # picking one selects that tab and raises (or spawns) the viewer foot.
   kalinTermPick = pkgs.writeShellScriptBin "kalin-term-pick" ''
     set -uo pipefail
-    PATH="${pkgs.lib.makeBinPath [ pkgs.tmux pkgs.fuzzel pkgs.foot pkgs.coreutils ]}:$PATH"
-    sel="$( { echo "＋ new terminal"; \
-      tmux list-sessions -F '#{session_name}  ·  #{session_windows}w#{?session_attached, (attached),}' 2>/dev/null; } \
-      | fuzzel --dmenu --prompt 'terminal> ' )" || exit 0
+    PATH="${pkgs.lib.makeBinPath [ pkgs.tmux pkgs.fuzzel pkgs.foot ]}:$PATH"
+    sel="$(tmux list-windows -t terminals \
+      -F '#{window_index}: #{window_name}  ·  #{pane_current_command}  ·  #{pane_current_path}' 2>/dev/null \
+      | fuzzel --dmenu --prompt 'tab> ')" || exit 0
     [ -n "$sel" ] || exit 0
-    if [ "$sel" = "＋ new terminal" ]; then
-      exec foot -e kalin-term
+    tmux select-window -t "terminals:''${sel%%:*}"
+    ${kalinTermFocus}/bin/kalin-term-focus 2>/dev/null && exit 0
+    exec foot --app-id=kalin-terminals -e ${kalinTerm}/bin/kalin-term
+  '';
+
+  # Standalone-editor window: helix as a peer of Zen/Obsidian in the tab
+  # model, not a program inside the terminal-browser (where tmux owns the tab
+  # keys). One dedicated tmux session "helix" holding a single hx instance,
+  # viewed by its own foot (app-id kalin-helix); tmux.conf translates the
+  # universal tab keys into helix buffer commands for this session only, so
+  # Ctrl+Tab cycles buffers here while it cycles terminal tabs in "terminals".
+  # `kalin-hx [file...]` opens files in the running instance (:open via
+  # send-keys) and raises the window; the session dies when hx quits.
+  kalinHx = let
+    attach = pkgs.writeShellScriptBin "kalin-hx-attach" ''
+      set -u
+      unset TMUX TMUX_PANE
+      exec ${pkgs.tmux}/bin/tmux new-session -A -s helix ${pkgs.helix}/bin/hx
+    '';
+  in pkgs.writeShellScriptBin "kalin-hx" ''
+    set -u
+    tmux=${pkgs.tmux}/bin/tmux
+    if ! $tmux has-session -t helix 2>/dev/null; then
+      $tmux new-session -d -s helix ${pkgs.helix}/bin/hx
+      # hx must be up before send-keys, or the :open keys get mangled into
+      # the terminal during startup (observed: half-eaten command inserted
+      # as buffer text). Poll briefly, then give the UI a beat to settle.
+      for _ in $(${pkgs.coreutils}/bin/seq 30); do
+        [ "$($tmux display -t helix -p '#{pane_current_command}')" = "hx" ] && break
+        ${pkgs.coreutils}/bin/sleep 0.1
+      done
+      ${pkgs.coreutils}/bin/sleep 0.3
     fi
-    exec foot -e kalin-term "''${sel%%  ·  *}"
+    for f in "$@"; do
+      case "$f" in /*) p="$f" ;; *) p="$PWD/$f" ;; esac
+      $tmux send-keys -t helix Escape ":open $p" Enter
+    done
+    ${kalinTermFocus}/bin/kalin-term-focus kalin-helix 2>/dev/null && exit 0
+    exec ${pkgs.util-linux}/bin/setsid -f ${pkgs.foot}/bin/foot \
+      --app-id=kalin-helix -e ${attach}/bin/kalin-hx-attach
   '';
 
   # Compat alias — test-vm/vm.nix and older docs refer to the display panel
@@ -312,40 +435,41 @@ in
   # sudo -A uses this to prompt via a GUI popup instead of the tty.
   environment.variables.SUDO_ASKPASS = "${sudoAskpass}/bin/kalin-sudo-askpass";
 
+  # Quickshell bar as a supervised user service so it self-heals. It used to
+  # be spawned once by kalin-wm's startup command (`qs &`), so anything that
+  # killed it (e.g. the 2026-07-21 tmux-cgroup kill) left the session bar-less
+  # until a manual restart or re-login. Restart=always both retries at login
+  # until the compositor's wayland-0 socket exists and resurrects the bar
+  # after any crash. Pinned to the primary display — the dev launcher
+  # (`kalinwm`, separate TTY/display) still spawns its own qs inline.
+  systemd.user.services.kalin-bar = {
+    description = "Quickshell bar (self-healing)";
+    wantedBy = [ "default.target" ];
+    path = [ "/run/current-system/sw" ];  # shell.qml spawns kalin-bar-kitty etc.
+    environment = {
+      QS_CONFIG_PATH = dirs.quickshell;
+      WAYLAND_DISPLAY = "wayland-0";
+      KALIN_IPC_SOCKET = "%t/kalin-ipc-wayland-0.sock";
+    };
+    serviceConfig = {
+      ExecStart = "${quickshell}/bin/qs";
+      Restart = "always";
+      RestartSec = 3;
+      StartLimitIntervalSec = 0;  # never give up (pre-compositor retries at login)
+    };
+  };
+
   # ── Programs with their own options/services ──────────────────────
   programs.zsh = {
     enable = true;
     autosuggestions.enable = true;
     syntaxHighlighting.enable = true;
-    shellAliases = {
-      # Navigation
-      kalin-code = "cd /home/kalin/environment/kalin-wm";
-      kalin-shell = "cd /home/kalin/environment/quickshell";
-      kalin-vm = "cd /home/kalin/environment/test-vm";
-      kalin-home = "cd /home/kalin/home-config";
-
-      # kalin-wm build & test
-      kalin-build = "cd /home/kalin/environment/kalin-wm && nix develop -c make clean all";
-      kalin-test = "cd /home/kalin/environment/kalin-wm && nix develop -c make test-unit";
-
-      # Runners
-      kalin-nested = "cd /home/kalin/environment/kalin-wm && ./scripts/run-nested";
-      kalin-tty = "cd /home/kalin/environment/kalin-wm && ./scripts/run-tty";
-      kalin-tty3 = "cd /home/kalin/environment/kalin-wm && ./scripts/test-tty3";
-
-      # Test VM
-      kalin-vm-build = "cd /home/kalin/environment/test-vm && nix build .#vm";
-      kalin-vm-run = "cd /home/kalin/environment/test-vm && timeout 60s env QEMU_OPTS=\"-display egl-headless,gl=on\" ./result/bin/run-kalin-test-vm";
-      kalin-vm-logs = "tail -20 /tmp/kalin-vm/kalin-wm.log && tail -20 /tmp/kalin-vm/quickshell.log";
-
-      # Host NixOS rebuild. kalin-wm is a path: input that tracks the live
-      # working tree (see flake.nix), so every rebuild overrides it fresh and
-      # skips writing the lock file — otherwise any uncommitted change over
-      # there makes home-config's build fail on a stale NAR hash.
-      kalin-rebuild = "sudo nixos-rebuild switch --flake /home/kalin/home-config#KalinBook --override-input kalin-wm path:/home/kalin/environment/kalin-wm --no-write-lock-file";
-      kalin-rebuild-build = "nixos-rebuild build --flake /home/kalin/home-config#KalinBook --override-input kalin-wm path:/home/kalin/environment/kalin-wm --no-write-lock-file";
-    };
   };
+
+  # All shell aliases (incl. the kalin-* workflow) live in ~/.zshrc — keep
+  # NixOS, including its ls/ll/l defaults, out of the alias business so
+  # there's exactly one source of truth.
+  environment.shellAliases = lib.mkForce { };
   programs.git = {
     enable = true;
     config.init.defaultBranch = "main";
@@ -371,13 +495,22 @@ in
 
   # Default file manager: Nautilus (matches CachyOS Niri + Noctalia setup).
   # Double-clicking archives still extracts via archive-extractor below.
-  environment.etc."xdg/mimeapps.list".text = lib.mkAfter ''
+  # This is the ONLY writer of /etc/xdg/mimeapps.list (two writers used to
+  # produce duplicate sections) — the .deb handler desktop item itself
+  # (debian-deb-install.desktop) is defined in containers.nix.
+  environment.etc."xdg/mimeapps.list".text = ''
     [Default Applications]
     inode/directory=org.gnome.Nautilus.desktop
     ${archiveMimeLines}
+    application/vnd.debian.binary-package=debian-deb-install.desktop
+    application/x-debian-package=debian-deb-install.desktop
+    application/x-deb=debian-deb-install.desktop
     [Added Associations]
     inode/directory=org.gnome.Nautilus.desktop
     ${archiveMimeLines}
+    application/vnd.debian.binary-package=debian-deb-install.desktop
+    application/x-debian-package=debian-deb-install.desktop
+    application/x-deb=debian-deb-install.desktop
   '';
 
   services.flatpak.enable = true;
@@ -409,15 +542,18 @@ in
     # wayland session bits
     xwayland-satellite swaylock swayidle swaybg quickshell wlr-randr
 
-    # launchers & terminals (kalinTerm/kalinTermPick = persistent tmux sessions,
-    # see kalin-tmux.nix + obsidian/plan/persistent-desktop.md)
-    fuzzel ghostty foot kalinTerm kalinTermPick
+    # launchers & terminals (kalinTerm/kalinTermTab/kalinTermPick = shared
+    # "terminals" tmux session, see kalin-tmux.nix + obsidian/plan/persistent-desktop.md)
+    # kalinLaunch = warm fzf launcher on Super+p / tap-Super (replaces fuzzel).
+    # kalinBarKitty = the TUI bottom bar's kitty host (BarHost.qml spawns it).
+    fuzzel ghostty foot kalinTerm kalinTermTab kalinTermPick kalinHx kalinLaunch kalinBarKitty
 
     # screenshots + clipboard
     grim slurp cliphist wl-clipboard clipPicker
 
-    # kalin-wm compositor docking primitive (see obsidian/ipc-socket.md)
-    kalinDock kalinUndock
+    # kalin-wm compositor docking primitive (see obsidian/ipc-socket.md) —
+    # provides both kalin-dock and kalin-undock
+    kalinIpc
 
     # sudo askpass GUI popup (zenity), see SUDO_ASKPASS below
     zenity sudoAskpass
@@ -442,8 +578,8 @@ in
     papirus-icon-theme
 
     # browsers
-    vivaldi
     zenBrowser
+    google-chrome  # for the Claude-for-Chrome extension (needs real Chrome, not Zen/Chromium)
 
     # editors
     helix vscode
