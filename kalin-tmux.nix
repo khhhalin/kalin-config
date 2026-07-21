@@ -6,9 +6,14 @@
 # the actual per-terminal sessions are created on demand by `kalin-term`.
 #
 # Deliberately non-destructive: `has-session || new-session` never clobbers a
-# running server, and there is no `kill-server` on stop, so a rebuild/restart of
-# this unit can't take down live sessions (e.g. the Claude Code session). The
-# server is torn down only when the whole systemd user manager exits at logout.
+# running server, and there is no `kill-server` on stop. That alone is NOT
+# enough: the server forked by ExecStart lands in this unit's cgroup, and the
+# default KillMode=control-group meant a unit restart (e.g. nixos-rebuild
+# switch after editing this file, 2026-07-21) SIGKILLed the server and every
+# session in it — exactly what this service exists to prevent. KillMode=process
+# makes stop/restart touch only the (already-exited) ExecStart process, so the
+# server survives; it is torn down only when the systemd user manager exits at
+# logout.
 { pkgs, ... }:
 {
   systemd.user.services.kalin-tmux = {
@@ -18,8 +23,9 @@
     serviceConfig = {
       Type = "oneshot";
       RemainAfterExit = true;
+      KillMode = "process";
       ExecStart = ''
-        ${pkgs.bash}/bin/bash -c '${pkgs.tmux}/bin/tmux has-session -t kalin-apps 2>/dev/null || ${pkgs.tmux}/bin/tmux new-session -d -s kalin-apps'
+        ${pkgs.bash}/bin/bash -c '${pkgs.tmux}/bin/tmux has-session -t kalin-apps 2>/dev/null || ${pkgs.tmux}/bin/tmux new-session -d -s kalin-apps; ${pkgs.tmux}/bin/tmux has-session -t terminals 2>/dev/null || ${pkgs.tmux}/bin/tmux new-session -d -s terminals'
       '';
     };
   };
