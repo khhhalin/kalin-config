@@ -14,7 +14,10 @@
     experimental-features = [ "nix-command" "flakes" ];
     warn-dirty = false;  # silence "Git tree is dirty" on every rebuild
   };
-  nixpkgs.config.allowUnfree = true;
+  nixpkgs.config = {
+    allowUnfree = true;
+    android_sdk.accept_license = true;  # Android Studio SDK components need this to install
+  };
   nix.gc = {
     automatic = true;
     dates = "weekly";

@@ -4,7 +4,7 @@
   users.users.${meta.userName} = {
     isNormalUser = true;
     description = meta.fullName;
-    extraGroups = [ "wheel" "networkmanager" "input" "uinput" "video" "tty" ];
+    extraGroups = [ "wheel" "networkmanager" "input" "uinput" "video" "tty" "seat" "kvm" ];
     shell = pkgs.zsh;
 
     # Required for rootless Podman user namespaces.

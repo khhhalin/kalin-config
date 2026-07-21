@@ -42,15 +42,7 @@ in
     pkgsBin
   ];
 
-  environment.etc."xdg/mimeapps.list".text = ''
-    [Default Applications]
-    application/vnd.debian.binary-package=debian-deb-install.desktop
-    application/x-debian-package=debian-deb-install.desktop
-    application/x-deb=debian-deb-install.desktop
-
-    [Added Associations]
-    application/vnd.debian.binary-package=debian-deb-install.desktop
-    application/x-debian-package=debian-deb-install.desktop
-    application/x-deb=debian-deb-install.desktop
-  '';
+  # NOTE: the mimeapps.list associations for debDesktop live in desktop.nix —
+  # desktop.nix is the single writer of /etc/xdg/mimeapps.list (two writers
+  # used to produce duplicate [Default Applications] sections).
 }

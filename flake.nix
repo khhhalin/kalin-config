@@ -19,17 +19,14 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
-    quickshell = {
-      url = "git+https://git.outfoxxed.me/outfoxxed/quickshell?ref=refs/tags/v0.3.0";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
-
     # Personal Wayland compositor (dwl fork). Pins its own nixpkgs for wlroots
     # 0.20 — intentionally does NOT follow system nixpkgs, which would break it.
     # path: (not git+file:) so a rebuild picks up staged-but-uncommitted work
     # in that tree without needing a commit first — git+file: only reads
     # committed content, confirmed by prefetching it directly and finding
     # staged new files missing from the fetched source.
+    # Keep this literal in sync with meta.dirs.kalinWm — flake inputs can't
+    # interpolate.
     kalin-wm.url = "path:/home/kalin/environment/kalin-wm";
   };
 
