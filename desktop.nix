@@ -320,10 +320,31 @@ s.send((sys.argv[1] + "\n").encode())
   # normal sibling in the same server. (Part 3's spawn-direct will later drop
   # the redundant supervisor layer.) Closing foot just detaches; Ctrl-D closes
   # a tab as usual.
+  # No arg: attach the outer "browser" session — one window, fixed 26-col left
+  # pane running the kalin-tab-sidebar TUI (dotfiles working tree, no rebuild
+  # for tweaks) + right pane with the "terminals" session nested (TMUX= so the
+  # same-server attach isn't refused as nesting). Tab keybinds all target
+  # `-t terminals` explicitly (see tmux.conf), so the outer layer never
+  # swallows a tab action. A name arg still attaches/creates that plain
+  # session (scratchpad).
   kalinTerm = pkgs.writeShellScriptBin "kalin-term" ''
     set -u
     unset TMUX TMUX_PANE
-    exec ${pkgs.tmux}/bin/tmux new-session -A -s "''${1:-terminals}"
+    t=${pkgs.tmux}/bin/tmux
+    name="''${1:-}"
+    if [ -n "$name" ]; then
+      exec $t new-session -A -s "$name"
+    fi
+    $t has-session -t terminals 2>/dev/null || $t new-session -d -s terminals
+    if ! $t has-session -t browser 2>/dev/null; then
+      # Positional pane tokens ({left}/{right}) — numeric .0/.1 would break
+      # under the config's pane-base-index 1.
+      $t new-session -d -s browser ${dirs.dotfiles}/tmux-scripts/kalin-tab-sidebar
+      $t split-window -h -t browser: "sh -c 'TMUX= exec ${pkgs.tmux}/bin/tmux attach -t terminals'"
+      $t resize-pane -t 'browser:.{left}' -x 26
+      $t select-pane -t 'browser:.{right}'
+    fi
+    exec $t attach -t browser
   '';
 
   # Raise a viewer window via the compositor IPC (query the state greeting's

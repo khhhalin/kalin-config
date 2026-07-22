@@ -30,6 +30,7 @@
   # stay a literal (inputs can't interpolate) — keep it in sync by hand.
   dirs = {
     homeConfig = "/home/kalin/home-config";
+    dotfiles   = "/home/kalin/environment/dotfiles";
     kalinWm    = "/home/kalin/environment/kalin-wm";
     quickshell = "/home/kalin/environment/quickshell";
     testVm     = "/home/kalin/environment/test-vm";
