@@ -21,6 +21,10 @@
   services.fwupd.enable = true;
   services.udisks2.enable = true;
 
+  # ── VA-API hw video decode (Ivybridge needs the legacy i965 driver) ──
+  hardware.graphics.extraPackages = with pkgs; [ intel-vaapi-driver ];
+  environment.sessionVariables.LIBVA_DRIVER_NAME = "i965";
+
   # ── Wine / Windows apps (needs 32-bit GL userspace) ─────────────
   hardware.graphics.enable32Bit = true;
   environment.systemPackages = with pkgs; [
