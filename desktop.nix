@@ -264,6 +264,18 @@ s.send((sys.argv[1] + "\n").encode())
     exec ${pkgs.zenity}/bin/zenity --password --title="sudo authentication"
   '';
 
+  # komes-dron ground station: `drony` starts laptopA's server inside the
+  # repo's own flake devShell; start_server.sh prints the dashboard URL(s).
+  # Hardcoded checkout path on purpose — this is a per-machine convenience
+  # wrapper for a working repo, not a reproducible package of it.
+  drony = pkgs.writeShellScriptBin "drony" ''
+    cd /home/kalin/komes/komes-dron/laptopA || {
+      echo "komes-dron checkout not found at /home/kalin/komes/komes-dron" >&2
+      exit 1
+    }
+    exec nix develop --command ./start_server.sh "$@"
+  '';
+
   # The docked bar panel TUIs (wifi/bluetooth/mixer/stats/clipboard/battery/
   # display): one Textual suite, source in the kalin-wm repo's tools/bar-tuis
   # (compositor-adjacent — see inputs.kalin-wm, an existing flake input,
@@ -578,6 +590,9 @@ in
 
     # sudo askpass GUI popup (zenity), see SUDO_ASKPASS below
     zenity sudoAskpass
+
+    # komes-dron ground station launcher (server + dashboard URL)
+    drony
 
     # docked-panel TUI suite (see obsidian/quickshell-shell.md's DockedPanel
     # entry and obsidian/bar-tuis.md in the kalin-wm repo) + the
